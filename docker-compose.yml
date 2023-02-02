@@ -1,0 +1,62 @@
+version: '3'
+
+services:
+  php8:
+    build:
+        context: ./docker/php8
+    hostname: php8-fpm
+    ports:
+      - "9000:9000"
+    volumes:
+      - ./projects/:/var/www/html/
+      - ./docker/php8/www.conf:/usr/local/etc/php-fpm.d/www.conf
+      - ./docker/php8/php.ini:/usr/local/etc/php/php.ini
+    environment:
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    networks:
+      - app-network
+
+  vue-ui:
+    build:
+      context: ./projects/frontend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    container_name: vue-ui
+    volumes:
+      - ./projects/frontend:/var/www/html/frontend
+      - /var/www/html/frontend/node_modules
+    networks:
+      - app-network
+
+  nginx:
+    platform: linux/x86_64
+    image: nginx:1.13.8
+    ports:
+      - "80:80"
+    volumes:
+      - ./projects/:/var/www/html/
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - php8
+    networks:
+      - app-network
+
+  mysql:
+    platform: linux/x86_64
+    image: mysql:8.0
+    ports:
+      - "3306:3306"
+    depends_on:
+      - php8
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_ROOT_USER: ${MYSQL_ROOT_USER}
+    networks:
+      - app-network
+#Docker Networks
+networks:
+  app-network:
+    driver: bridge
